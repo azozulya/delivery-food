@@ -154,16 +154,20 @@ function openGoods(event) {
   const target = event.target;
   const restaurant = target.closest('.card-restaurant');
 
-  if(restaurants) {
-    containerPromo.classList.add('hide');
-    restaurants.classList.add('hide');
-    menu.classList.remove('hide');
+  if(restaurant) {
+    if(login){
+      containerPromo.classList.add('hide');
+      restaurants.classList.add('hide');
+      menu.classList.remove('hide');
 
-    cardsMenu.textContent = '';
+      cardsMenu.textContent = '';
 
-    createCardGood();
-    createCardGood();
-    createCardGood();  
+      createCardGood();
+      createCardGood();
+      createCardGood();  
+    } else {
+      toggleAuthModal();
+    }
   }
 }
 
