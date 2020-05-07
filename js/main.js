@@ -1,5 +1,7 @@
 'use strict';
 
+const GET_RESTAURANTS_URL = './db/partners.json';
+
 const cartButton = document.querySelector("#cart-button");
 const modal = document.querySelector(".modal");
 const close = document.querySelector(".close");
@@ -9,7 +11,6 @@ const authCloseBtn = document.querySelector('.close-auth');
 const logInForm = document.querySelector('#logInForm');
 const loginInp = document.querySelector('#login');
 const userName = document.querySelector('.user-name');
-//const buttonLogin = document.querySelector('.button-login');
 const buttonOut = document.querySelector('.button-out');
 const cardsRestaurants = document.querySelector('.cards-restaurants');
 const containerPromo = document.querySelector('.container-promo');
@@ -17,8 +18,23 @@ const restaurants = document.querySelector('.restaurants');
 const menu = document.querySelector('.menu');
 const logo = document.querySelector('.logo');
 const cardsMenu = document.querySelector('.cards-menu');
+const goodsHeader = document.querySelector('.restaurant-info');
 
 let login = localStorage.getItem('gloDelivery');
+
+const getData = async function(url) {
+  const response = await fetch(url);
+  if(!response.ok){
+    throw new Error(`Ошибка по адресу ${url}, 
+      статус ошибки ${response.status}`);    
+  } 
+  return await response.json();
+}
+
+const valid = function(str) {
+  const nameReg = /^[a-zA-Z][a-zA-Z0-9-_\.]{1,20}$/;
+  return nameReg.test(str);
+}
 
 function toggleModal() {
   modal.classList.toggle("is-open");
@@ -40,9 +56,8 @@ function authorized() {
 
     buttonOut.removeEventListener('click', logOut);
     checkAuth();
-
+    returnMain();
   }
-
   userName.textContent = login;
 
   authBtn.style.display = 'none';
@@ -55,12 +70,10 @@ function authorized() {
 function notAuthorized() {
 
   function logIn(event) {
-    event.preventDefault();
+    event.preventDefault();   
 
-    login = loginInp.value;
-
-    if(login.length > 0) {
-
+    if(valid(loginInp.value)) {
+      login = loginInp.value;
       localStorage.setItem('gloDelivery', login);
 
       toggleAuthModal();
@@ -73,14 +86,12 @@ function notAuthorized() {
       checkAuth();
 
     } else {
-
       loginInp.classList.add('input-error');
       
       loginInp.addEventListener('keyup', function() {
         if(this.value.length > 0)
           this.classList.remove('input-error');
       });
-
     }
   }  
   authBtn.addEventListener('click', toggleAuthModal);
@@ -96,53 +107,55 @@ function checkAuth() {
   }
 }
 
-function createCardRestaurant() {
+function createCardRestaurant(restaurant) {
+  const { 
+    image, 
+    kitchen, 
+    name,
+    price, 
+    products, 
+    stars,
+    time_of_delivery: timeOfDelivery
+  } = restaurant;
+
   const card = `
-    <a class="card card-restaurant">
-      <img src="img/pizza-plus/preview.jpg" alt="image" class="card-image"/>
+    <a class="card card-restaurant" data-products="${products}">
+      <img src="${image}" alt="image" class="card-image"/>
       <div class="card-text">
         <div class="card-heading">
-          <h3 class="card-title">Пицца плюс</h3>
-          <span class="card-tag tag">50 мин</span>
+          <h3 class="card-title">${name}</h3>
+          <span class="card-tag tag">${timeOfDelivery} мин</span>
         </div>
-        <!-- /.card-heading -->
         <div class="card-info">
-          <div class="rating">
-            4.5
-          </div>
-          <div class="price">От 900 ₽</div>
-          <div class="category">Пицца</div>
+          <div class="rating">${stars}</div>
+          <div class="price">От ${price} ₽</div>
+          <div class="category">${kitchen}</div>
         </div>
-        <!-- /.card-info -->
       </div>
-      <!-- /.card-text -->
     </a>  
-  `;
+  `;  
   cardsRestaurants.insertAdjacentHTML('beforeend', card);
-
 }
 
-function createCardGood(){
+function createCardGood({ description, id, image, name, price }){
   const card = document.createElement('div');
   card.className = 'card';
 
   card.insertAdjacentHTML('beforeend', `
-      <img src="img/pizza-plus/pizza-vesuvius.jpg" alt="image" class="card-image"/>
+      <img src="${image}" alt="image" class="card-image"/>
       <div class="card-text">
         <div class="card-heading">
-          <h3 class="card-title card-title-reg">Пицца Везувий</h3>
+          <h3 class="card-title card-title-reg">${name}</h3>
         </div>
         <div class="card-info">
-          <div class="ingredients">Соус томатный, сыр «Моцарелла», ветчина, пепперони, перец
-            «Халапенье», соус «Тобаско», томаты.
-          </div>
+          <div class="ingredients">${description}</div>
         </div>
         <div class="card-buttons">
           <button class="button button-primary button-add-cart">
             <span class="button-card-text">В корзину</span>
             <span class="button-cart-svg"></span>
           </button>
-          <strong class="card-price-bold">545 ₽</strong>
+          <strong class="card-price-bold">${price}&nbsp;₽</strong>
         </div>
       </div>
   `);
@@ -151,49 +164,72 @@ function createCardGood(){
 }
 
 function openGoods(event) {
-  const target = event.target;
-  const restaurant = target.closest('.card-restaurant');
+  const target = event.target;  
+  if (login) {
 
-  if(restaurant) {
-    if(login){
+    const restaurant = target.closest('.card-restaurant'); 
+    if(restaurant) {  
+      goodsHeader.textContent = '';    
+      cardsMenu.textContent = '';
       containerPromo.classList.add('hide');
       restaurants.classList.add('hide');
       menu.classList.remove('hide');
 
-      cardsMenu.textContent = '';
+      const getInfo = (el) => {
+        const item = restaurant.querySelector(el);
+        return item ? item.textContent : '';
+      }
 
-      createCardGood();
-      createCardGood();
-      createCardGood();  
-    } else {
-      toggleAuthModal();
-    }
+      const restaurantInfo = `
+        <h2 class="section-title restaurant-title">${getInfo('.card-title')}</h2>
+        <div class="card-info">
+          <div class="rating">${getInfo('.rating')}</div>
+          <div class="price">${getInfo('.price')}</div>
+          <div class="category">${getInfo('.category')}</div>
+        </div>
+      `;
+      
+      goodsHeader.insertAdjacentHTML('beforeend', restaurantInfo);
+
+      getData(`db/${restaurant.dataset.products}`).then(function(data){
+          data.forEach(createCardGood);
+        }
+      );
+    } 
+  } else {
+    toggleAuthModal();
   }
 }
 
-authBtn.addEventListener('click', toggleAuthModal);
-
-authCloseBtn.addEventListener('click', toggleAuthModal);
-
-cartButton.addEventListener("click", toggleModal);
-
-close.addEventListener("click", toggleModal);
-
-cardsRestaurants.addEventListener('click', openGoods);
-
-logo.addEventListener('click', function(){
+function returnMain() {  
   containerPromo.classList.remove('hide');
   restaurants.classList.remove('hide');
-  menu.classList.add('hide');
-})
+  menu.classList.add('hide');  
+}
 
-checkAuth();
+function init() {
+  getData(GET_RESTAURANTS_URL).then(function(data){
+    data.forEach(createCardRestaurant);
+  })
 
-createCardRestaurant();
-createCardRestaurant();
-createCardRestaurant();
+  authBtn.addEventListener('click', toggleAuthModal);
 
-new Swiper('.swiper-container', {
-  loop: true,
-  autoplay: true
-});
+  authCloseBtn.addEventListener('click', toggleAuthModal);
+
+  cartButton.addEventListener("click", toggleModal);
+
+  close.addEventListener("click", toggleModal);
+
+  cardsRestaurants.addEventListener('click', openGoods);
+
+  logo.addEventListener('click', returnMain);
+
+  checkAuth();
+
+  new Swiper('.swiper-container', {
+    loop: true,
+    autoplay: true
+  });
+}
+
+init();
