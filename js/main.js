@@ -19,6 +19,7 @@ const menu = document.querySelector('.menu');
 const logo = document.querySelector('.logo');
 const cardsMenu = document.querySelector('.cards-menu');
 const goodsHeader = document.querySelector('.restaurant-info');
+const inputSearch = document.querySelector('.input-search');
 
 let login = localStorage.getItem('gloDelivery');
 
@@ -53,6 +54,7 @@ function authorized() {
     authBtn.style.display = '';
     userName.style.display = '';
     buttonOut.style.display = '';
+    inputSearch.style.display = 'none';
 
     buttonOut.removeEventListener('click', logOut);
     checkAuth();
@@ -68,6 +70,7 @@ function authorized() {
 }
 
 function notAuthorized() {
+  inputSearch.style.display = 'none';
 
   function logIn(event) {
     event.preventDefault();   
@@ -75,7 +78,7 @@ function notAuthorized() {
     if(valid(loginInp.value)) {
       login = loginInp.value;
       localStorage.setItem('gloDelivery', login);
-
+      inputSearch.style.display = '';
       toggleAuthModal();
 
       authBtn.removeEventListener('click', toggleAuthModal);
@@ -142,7 +145,7 @@ function createCardGood({ description, id, image, name, price }){
   card.className = 'card';
 
   card.insertAdjacentHTML('beforeend', `
-      <img src="${image}" alt="image" class="card-image"/>
+      <img src="${image}" alt="${name}" class="card-image"/>
       <div class="card-text">
         <div class="card-heading">
           <h3 class="card-title card-title-reg">${name}</h3>
@@ -224,6 +227,53 @@ function init() {
 
   logo.addEventListener('click', returnMain);
 
+  inputSearch.addEventListener('keydown', function(event){
+    if(event.keyCode === 13){
+      const target = event.target;
+      const value = target.value.toLowerCase().trim();
+      const goods = [];
+
+      target.value = '';
+
+      if (!value || value.length < 2) {
+        target.style.backgroundColor = 'tomato';
+        setTimeout(function(){
+          target.style.backgroundColor = '';
+        }, 2000);
+        return;
+      }      
+
+      getData(GET_RESTAURANTS_URL)
+        .then(function(data){
+          const products = data.map((el) => el.products);
+        
+          products.forEach(function(product){
+            getData(`./db/${product}`)
+              .then(function(data){
+                goods.push(...data);
+                const searchGoods = goods.filter(function(item){
+                    return item.name.toLowerCase().includes(value);
+                });
+                console.log('goods: ', goods);
+                goodsHeader.textContent = '';    
+                cardsMenu.textContent = '';
+                containerPromo.classList.add('hide');
+                restaurants.classList.add('hide');
+                menu.classList.remove('hide');
+
+                return searchGoods;
+              })
+              .then(function(data){
+                console.log('data: ', data.length);
+                data.forEach(createCardGood);
+                goodsHeader.insertAdjacentHTML('afterbegin', `<h2 class="section-title restaurant-title">${data.length > 0 ? "Результат поиска" : "Ничего не найдено"}</h2>`);    
+              })
+          });
+
+        });
+    }
+  });
+
   checkAuth();
 
   new Swiper('.swiper-container', {
@@ -233,3 +283,73 @@ function init() {
 }
 
 init();
+
+
+/*
+	inputSearch.addEventListener('keydown', function(event) {
+
+		if (event.keyCode === 13) {
+			const target = event.target;
+			
+			const value = target.value.toLowerCase().trim();
+
+			target.value = '';
+
+			if (!value || value.length < 3) {
+				target.style.backgroundColor = 'tomato';
+				setTimeout(function(){
+					target.style.backgroundColor = '';
+				}, 2000);
+				return;
+			}
+
+			const goods = [];
+			
+			getData('./db/partners.json')
+				.then(function(data) {
+					
+					const products = data.map(function(item){
+						return item.products;
+					});
+
+
+					products.forEach(function(product){
+						getData(`./db/${product}`)
+							.then(function(data){
+								
+								goods.push(...data);
+
+								const searchGoods = goods.filter(function(item) {
+									return item.name.toLowerCase().includes(value)
+								})
+
+								console.log(searchGoods);
+								
+								cardsMenu.textContent = '';
+
+								containerPromo.classList.add('hide');
+								restaurants.classList.add('hide');
+								menu.classList.remove('hide');
+
+								restaurantTitle.textContent = 'Результат поиска';
+								rating.textContent = '';
+								minPrice.textContent = '';
+								category.textContent = '';
+
+								return searchGoods;
+							})
+							.then(function(data){
+								data.forEach(createCardGood);
+							})
+					})
+					
+					
+				});
+
+			
+				
+		}
+		
+  });
+  
+  */
